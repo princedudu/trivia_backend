@@ -1,0 +1,36 @@
+[
+  {
+    "timestamp": "2025-03-25T20:46:14.170Z",
+    "answers": [
+      {
+        "question": "What is the capital city of Brazil? c",
+        "answer": "C"
+      },
+      {
+        "question": "Which country has the most deserts?",
+        "answer": "D"
+      }
+    ],
+    "score": 1
+  },
+  {
+    "timestamp": "2025-03-25T20:46:28.437Z",
+    "answers": [
+      {
+        "question": "What is the capital city of Brazil? c",
+        "answer": "A"
+      }
+    ],
+    "score": 0
+  },
+  {
+    "timestamp": "2025-03-25T20:52:29.206Z",
+    "answers": [
+      {
+        "question": "What is the capital city of Brazil? c",
+        "answer": "A"
+      }
+    ],
+    "score": 0
+  }
+]
