@@ -8,9 +8,17 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
-// POST endpoint to save responses
+// Root route (optional, avoids "Cannot GET /")
+app.get('/', (req, res) => {
+    res.send('Welcome to the Trivia Backend! Use /responses to see data.');
+});
+
+// Submit endpoint with IP tracking
 app.post('/submit', async (req, res) => {
-    const responseData = req.body;
+    const responseData = req.body; // Data sent from front-end (timestamp, answers, score)
+    // Capture the client's IP address
+    const clientIp = req.headers['x-forwarded-for'] || req.ip || 'Unknown IP';
+    
     try {
         const filePath = path.join(__dirname, 'responses.json');
         let data = [];
@@ -21,7 +29,14 @@ app.post('/submit', async (req, res) => {
             // File doesn’t exist yet, start with empty array
         }
 
-        data.push(responseData);
+        // Combine response data with IP
+        const responseWithIp = {
+            ...responseData,
+            ip: clientIp,
+            receivedAt: new Date().toISOString() // Optional: when the server received it
+        };
+        data.push(responseWithIp);
+
         await fs.writeFile(filePath, JSON.stringify(data, null, 2));
         res.status(200).json({ message: 'Data saved successfully' });
     } catch (error) {
@@ -30,7 +45,7 @@ app.post('/submit', async (req, res) => {
     }
 });
 
-// GET endpoint to retrieve responses
+// Responses endpoint
 app.get('/responses', async (req, res) => {
     try {
         const filePath = path.join(__dirname, 'responses.json');
