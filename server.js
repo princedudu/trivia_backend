@@ -2,34 +2,39 @@ const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const cors = require('cors');
-const crypto = require('crypto'); // Built-in Node.js module for hashing
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Simple hash function to generate a unique ID from IPs
+function generateUserId(ip1, ip2) {
+    // Combine the two IPs into a single string
+    const combined = `${ip1}-${ip2}`;
+    // Simple hash: sum character codes and take modulo for a short ID
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+        hash = (hash + combined.charCodeAt(i)) % 1000000; // Keep it 6 digits max
+    }
+    return `user-${hash.toString().padStart(6, '0')}`; // e.g., user-012345
+}
 
 app.use(express.json());
 app.use(cors());
 
-// Function to generate a unique User ID from an IP
-function generateUserId(ip) {
-    // Create a short, unique ID by hashing the IP with MD5 and taking the first 8 characters
-    return crypto.createHash('md5').update(ip).digest('hex').slice(0, 8);
-}
-
-// Root route (optional)
+// Root route
 app.get('/', (req, res) => {
     res.send('Welcome to the Trivia Backend! Use /responses to see data.');
 });
 
-// Submit endpoint with IP mapping to User ID
+// Submit endpoint with IP parsing and User ID
 app.post('/submit', async (req, res) => {
-    const responseData = req.body; // Data from front-end (timestamp, answers, score)
-    // Get the x-forwarded-for header or req.ip
-    const ipHeader = req.headers['x-forwarded-for'] || req.ip || 'Unknown IP';
+    const responseData = req.body; // Data from front-end
+    const forwardedFor = req.headers['x-forwarded-for'] || req.ip || 'Unknown IP';
     
-    // Parse the IP list and extract the third IP
-    const ipList = ipHeader.split(',').map(ip => ip.trim());
-    const thirdIp = ipList[2] || ipList[0] || 'Unknown IP'; // Fallback to first IP or 'Unknown IP'
-    const userId = generateUserId(thirdIp); // Generate User ID from third IP
+    // Parse the first two IPs from X-Forwarded-For
+    const ipList = forwardedFor.split(',').map(ip => ip.trim());
+    const ip1 = ipList[0] || 'Unknown';
+    const ip2 = ipList[1] || 'Unknown';
+    const userId = generateUserId(ip1, ip2); // Generate unique User ID
 
     try {
         const filePath = path.join(__dirname, 'responses.json');
@@ -41,12 +46,12 @@ app.post('/submit', async (req, res) => {
             // File doesn’t exist yet, start with empty array
         }
 
-        // Create response object with userId as the first property
+        // Create response object with User ID as the first key
         const responseWithId = {
-            userId, // First item, hashed ID
-            ...responseData, // Spread original data (timestamp, answers, score)
-            ip: ipHeader, // Full IP list for reference
-            receivedAt: new Date().toISOString() // Server receipt time
+            userId, // First property
+            ...responseData, // Spread existing data (timestamp, answers, score)
+            ip: forwardedFor, // Keep full IP string for reference
+            receivedAt: new Date().toISOString()
         };
         data.push(responseWithId);
 
@@ -66,9 +71,7 @@ app.get('/responses', async (req, res) => {
         try {
             const fileData = await fs.readFile(filePath, 'utf8');
             data = JSON.parse(fileData);
-        } catch (error) {
-            // File doesn’t exist yet, return empty array
-        }
+        } catch (error) {}
         res.status(200).json(data);
     } catch (error) {
         console.error('Error reading responses:', error);
